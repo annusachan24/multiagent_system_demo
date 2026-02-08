@@ -2,3 +2,4 @@ python-dotenv==1.2.1
 autogen-agentchat==0.7.5
 autogen-ext[openai]
 pytest>=7.0.0
+streamlit==1.28.0
