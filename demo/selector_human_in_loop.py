@@ -18,12 +18,21 @@ if _demo_dir not in sys.path:
     sys.path.insert(0, _demo_dir)
 
 from autogen_agentchat.agents import AssistantAgent, UserProxyAgent
+from autogen_agentchat.base import Response, TaskResult
 from autogen_agentchat.conditions import MaxMessageTermination, TextMentionTermination
+from autogen_agentchat.messages import (
+    ModelClientStreamingChunkEvent,
+    MultiModalMessage,
+    TextMessage,
+    ToolCallExecutionEvent,
+    ToolCallRequestEvent,
+    ToolCallSummaryMessage,
+    UserInputRequestedEvent,
+)
 from autogen_agentchat.teams import SelectorGroupChat
-from autogen_agentchat.ui import Console
 from autogen_ext.models.openai import OpenAIChatCompletionClient
 
-from constants import openai_api_key
+from contants import openai_api_key
 from prompts import AGENT_CONFIG
 
 # -----------------------------------------------------------------------------
@@ -63,7 +72,7 @@ for key, config in AGENT_CONFIG.items():
 # Human-in-the-loop: when selector chooses this agent, user is prompted for input
 human_agent = UserProxyAgent(
     "human_proxy_agent",
-    description="Human approver. Select when the reviewer escalates or when final approval/rejection is needed.",
+    description="Human user. Select when intake or reviewer need clarification (e.g. missing department, quantity, budget) or when final approval/rejection is needed.",
 )
 
 participants = assistant_agents + [human_agent]
@@ -91,8 +100,12 @@ Current conversation:
 {history}
 
 Select exactly one agent from {participants} to perform the next step.
-Prefer order: intake (structure request) -> policy/finance/vendor_risk (checks) -> reviewer (synthesize).
-Choose human_proxy_agent when the reviewer has escalated or when a final human decision is needed.
+
+Rules:
+- If the intake_agent (or any message) shows status INCOMPLETE, missing_fields, HUMAN_INPUT_NEEDED, or asks for clarification (e.g. department, quantity, budget), you MUST select human_proxy_agent so the human can provide the missing information.
+- Otherwise prefer order: intake (structure request) -> policy/finance/vendor_risk (checks) -> reviewer (synthesize).
+- Choose human_proxy_agent when the reviewer escalates or when a final human decision is needed.
+
 Reply with only the agent name.
 """
 
@@ -108,6 +121,92 @@ team = SelectorGroupChat(
 )
 
 
+# Friendly labels for agents (no raw event names or errors for the user)
+SOURCE_LABELS = {
+    "user": "You",
+    "intake_agent": "Intake",
+    "policy_agent": "Policy",
+    "finance_agent": "Finance",
+    "vendor_risk_agent": "Vendor risk",
+    "reviewer_agent": "Reviewer",
+    "human_proxy_agent": "You",
+}
+
+
+def _friendly_source(source: str) -> str:
+    return SOURCE_LABELS.get(source, source.replace("_", " ").title())
+
+
+def _is_internal_or_error(text: str) -> bool:
+    """Hide only raw tool/validation noise, not normal agent messages."""
+    if not text or not text.strip():
+        return True
+    lower = text.lower()
+    return (
+        "validation error for " in lower
+        or "field required [type=missing" in lower
+        or "input_value={}" in lower
+        or "for further information visit https://errors.pydantic" in lower
+    )
+
+
+async def _friendly_console(stream):
+    """Consume the stream and print only user-friendly lines (no raw events or errors)."""
+    last_processed = None
+    streaming = False
+    async for message in stream:
+        if isinstance(message, TaskResult):
+            last_processed = message
+            continue
+        if isinstance(message, Response):
+            last_processed = message
+            content = message.chat_message.to_text() if hasattr(message.chat_message, "to_text") else str(message.chat_message)
+            if not _is_internal_or_error(content):
+                label = _friendly_source(message.chat_message.source)
+                print(f"\n{label}: {content}\n")
+            continue
+        if isinstance(message, UserInputRequestedEvent):
+            continue
+        if isinstance(message, ToolCallRequestEvent):
+            print("Checking your request…")
+            continue
+        if isinstance(message, ToolCallExecutionEvent):
+            continue
+        if isinstance(message, ToolCallSummaryMessage):
+            continue
+        if isinstance(message, ModelClientStreamingChunkEvent):
+            print(message.to_text(), end="", flush=True)
+            streaming = True
+            continue
+        if isinstance(message, (TextMessage, MultiModalMessage)):
+            if streaming:
+                print()
+                streaming = False
+            content = message.to_text() if hasattr(message, "to_text") else str(message)
+            if _is_internal_or_error(content):
+                continue
+            label = _friendly_source(message.source)
+            print(f"\n{label}: {content}\n")
+            continue
+        # Skip other events (selector, etc.) without printing
+    if last_processed is None:
+        raise ValueError("No TaskResult or Response was processed.")
+    return last_processed
+
+
+def _followup_prompt(error: Exception) -> str:
+    """Turn an error into a user-friendly follow-up question."""
+    msg = str(error).lower()
+    if "department" in msg or "missing" in msg:
+        return "Which department is this request for? (e.g. Engineering, Marketing, HR)"
+    if "budget" in msg or "amount" in msg:
+        return "What is the estimated budget or amount for this request?"
+    if "quantity" in msg:
+        return "How many units do you need?"
+    if "api" in msg or "key" in msg or "openai" in msg:
+        return "There was a connection issue. Please check your setup and try again—or type your request again."
+    return "Could you provide a bit more detail so we can continue? (e.g. department, quantity, budget)"
+
 async def main() -> None:
     task = (
         "We need to procure 50 MacBooks for Engineering, budget around 75L INR, "
@@ -115,9 +214,12 @@ async def main() -> None:
     )
     while True:
         print("\n--- Running procurement workflow ---\n")
-        stream = team.run_stream(task=task)
-        await Console(stream)
-        task = input("\nEnter next instruction or feedback (or 'exit' to quit): ").strip()
+        try:
+            stream = team.run_stream(task=task)
+            await _friendly_console(stream)
+        except Exception as e:
+            print("\n" + _followup_prompt(e) + "\n")
+        task = input("\nEnter your response (or 'exit' to quit): ").strip()
         if not task or task.lower() == "exit":
             break
 

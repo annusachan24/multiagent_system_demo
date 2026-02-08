@@ -1,0 +1,35 @@
+(venv) annu:demo annu$ python selector_human_in_loop.py 
+
+--- Running procurement workflow ---
+
+
+You: We need to procure 50 MacBooks for Engineering, budget around 75L INR, next quarter, prefer Apple Authorized Vendor. Process this request.
+
+Checking your request…
+Checking your request…
+Checking your request…
+Checking your request…
+
+Enter your response (or 'exit' to quit): approved   
+
+--- Running procurement workflow ---
+
+
+You: approved
+
+
+Reviewer: {
+  "summary": {
+    "policy": "A soft block is in place requiring VP approval for purchases above 50L INR.",
+    "finance": "There is a sufficient available budget of 80L INR, which covers the 75L INR cost.",
+    "vendor": "An Apple Authorized Vendor is preferred and is approved with a low risk rating and contract in place."
+  },
+  "decision": "ESCALATE_TO_HUMAN",
+  "reasoning": "The procurement falls under a policy soft block requiring VP approval for expenses above 50L INR, despite having sufficient budget and an approved vendor with low risk.",
+  "human_action_required": true,
+  "questions_for_human": [
+    "Do you approve the procurement in accordance with the policy requirement for VP approval?"
+  ]
+}
+
+Enter your response: 

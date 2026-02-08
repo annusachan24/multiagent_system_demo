@@ -30,12 +30,17 @@ When fields are complete:
 - Output a structured JSON object.
 - Clearly mark the request as READY_FOR_REVIEW.
 
+When required fields are missing (e.g. department, quantity, estimated_budget):
+- Set status to INCOMPLETE and list missing_fields.
+- In notes, state clearly: "HUMAN_INPUT_NEEDED" and ask the human for the missing field(s) by name (e.g. "Please provide department.").
+- Do NOT proceed to other agents; the next speaker must be the human so they can supply the missing information.
+
 Output format:
 {
   "status": "INCOMPLETE | READY_FOR_REVIEW",
   "extracted_fields": { ... },
   "missing_fields": [ ... ],
-  "notes": "short explanation"
+  "notes": "short explanation. If INCOMPLETE, include HUMAN_INPUT_NEEDED and the question for the human."
 }
 """
 
