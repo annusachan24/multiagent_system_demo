@@ -1,0 +1,15 @@
+[project]
+name = "multi-agent-system"
+version = "0.1.0"
+description = "Multi-agent procurement with MCP tools"
+readme = "README.md"
+requires-python = ">=3.10"
+
+[tool.ruff]
+target-version = "py310"
+line-length = 88
+include = ["*.py"]
+extend-exclude = ["venv", ".venv", "build", "dist"]
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "N", "W"]

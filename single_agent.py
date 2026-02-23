@@ -27,6 +27,8 @@ agent = AssistantAgent(
 async def main():
     result = await agent.run(task="Find information on AutoGen")
     print(result.messages)
+    print()
+    print(result.messages[-1].content)
 
 
 if __name__ == "__main__":

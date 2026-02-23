@@ -1,0 +1,35 @@
+# multi-agent-system Development Guidelines
+
+Auto-generated from all feature plans. Last updated: 2026-02-21
+
+## Active Technologies
+- Python 3.10+ (align with existing project) + Existing autogen-agentchat, autogen-ext[openai]; add Streamlit for the web UI (001-streamlit-ui-hil)
+- N/A (conversation in-memory for the session; Streamlit session state for UI state) (001-streamlit-ui-hil)
+- Python 3.10+ + MCP Python SDK (`mcp`), Autogen (autogen-agentchat, autogen-ext with MCP and OpenAI), ASGI server (e.g. Uvicorn/Hypercorn for SSE). (002-mcp-sse-tools)
+- N/A (stateless tool execution). (002-mcp-sse-tools)
+
+- Python 3.10+ + autogen-agentchat (0.7.5), autogen-ext[openai]; existing code uses `OpenAIChatCompletionClient`, `AssistantAgent`, `SelectorGroupChat`, `UserProxyAgent` (001-selector-group-chat)
+
+## Project Structure
+
+```text
+src/
+tests/
+```
+
+## Commands
+
+cd src [ONLY COMMANDS FOR ACTIVE TECHNOLOGIES][ONLY COMMANDS FOR ACTIVE TECHNOLOGIES] pytest [ONLY COMMANDS FOR ACTIVE TECHNOLOGIES][ONLY COMMANDS FOR ACTIVE TECHNOLOGIES] ruff check .
+
+## Code Style
+
+Python 3.10+: Follow standard conventions
+
+## Recent Changes
+- 002-mcp-sse-tools: Added Python 3.10+ + MCP Python SDK (`mcp`), Autogen (autogen-agentchat, autogen-ext with MCP and OpenAI), ASGI server (e.g. Uvicorn/Hypercorn for SSE).
+- 001-streamlit-ui-hil: Added Python 3.10+ (align with existing project) + Existing autogen-agentchat, autogen-ext[openai]; add Streamlit for the web UI
+
+- 001-selector-group-chat: Added Python 3.10+ + autogen-agentchat (0.7.5), autogen-ext[openai]; existing code uses `OpenAIChatCompletionClient`, `AssistantAgent`, `SelectorGroupChat`, `UserProxyAgent`
+
+<!-- MANUAL ADDITIONS START -->
+<!-- MANUAL ADDITIONS END -->
